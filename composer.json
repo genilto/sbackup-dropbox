@@ -1,4 +1,21 @@
 {
+    "name": "genilto/sbackup-dropbox",
+    "description": "SBackup adapter to work with backups on Dropbox",
+    "homepage": "https://github.com/genilto/sbackup-dropbox",
+    "license": "MIT",
+    "keywords": [
+        "adapter",
+        "backup",
+        "send",
+        "sbackup",
+        "dropbox"
+    ],
+    "authors": [
+        {
+            "name": "Genilto Vanzin",
+            "email": "genilto.vanzin@gmail.com"
+        }
+    ],
     "config": {
         "platform": {
           "php": "7.3.3"
