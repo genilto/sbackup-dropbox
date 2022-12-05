@@ -1,5 +1,4 @@
 vendor
 .env
-/html/toUpload
-/html/logs
 /html/config
+/logs/*.log

@@ -3,9 +3,10 @@
 namespace genilto\sbackup\adapters;
 
 use \Exception;
-use \genilto\sbackup\interface\UploaderInterface;
+use \genilto\sbackup\UploaderInterface;
 use \genilto\sbackup\store\DataStoreInterface;
 use \genilto\sbackup\logger\SBLogger;
+use \genilto\sbackup\SBackupException;
 
 use \genilto\sbackup\adapters\models\DropboxTokenInfo;
 
@@ -19,25 +20,41 @@ class SBackupDropbox implements UploaderInterface {
 
     private const INFORMATION_INDEX = "dropbox_token_info";
 
-    private string $clientId;
-    private string $clientSecret;
+    /**
+     * @var string $clientId
+     */
+    private $clientId;
+    /**
+     * @var string $clientSecret
+     */
+    private $clientSecret;
 
-    private ?DropboxTokenInfo $tokenInfo;
+    /**
+     * @var ?DropboxTokenInfo $tokenInfo
+     */
+    private $tokenInfo;
 
-    private Dropbox $dropbox;
-    private DropboxAuthHelper $authHelper;
+    /**
+     * @var Dropbox $dropbox;
+     */
+    private $dropbox;
+
+    /**
+     * @var DropboxAuthHelper $authHelper;
+     */
+    private $authHelper;
     
     /**
      * Logging adapter
      * 
-     * @var SBLogger
+     * @var SBLogger $logger
      */
-    private SBLogger $logger;
+    private $logger;
 
     /**
      * The data store for tokens
      * 
-     * @var DataStoreInterface
+     * @var DataStoreInterface $dataStore
      */
     private $dataStore;
 
@@ -62,9 +79,11 @@ class SBackupDropbox implements UploaderInterface {
 
     /**
      * Init the dropbox variables
+     * 
+     * @param bool Indicate if must get a refreshed token when current token is expired
      */
-    private function initDropbox () {
-        $accessToken = $this->getValidToken();
+    private function initDropbox ($tokenMustBeValid = false) {
+        $accessToken = $this->getToken($tokenMustBeValid);
         
         // Configure Dropbox Application
         $dropboxApp = new DropboxApp($this->clientId, $this->clientSecret, $accessToken);
@@ -79,13 +98,15 @@ class SBackupDropbox implements UploaderInterface {
     /**
      * Get a Valid Token
      * 
+     * @param bool Indicate if must get a refreshed token when current token is expired
+     * 
      * @return string token if exists and is valid or a refreshed token if expired
      */
-    private function getValidToken() {
+    private function getToken($mustBeValid) {
         if (!$this->isAuthorized()) {
             return null;
         }
-        if ($this->tokenInfo->isTokenExpired()) {
+        if ($mustBeValid && $this->tokenInfo->isTokenExpired()) {
             $this->getAndSaveRefreshedAccessToken();
         }
         return $this->tokenInfo->getAccessToken()->getToken();
@@ -114,9 +135,11 @@ class SBackupDropbox implements UploaderInterface {
             $newAccessToken = $authHelper->getRefreshedAccessToken($accessToken);
             $this->saveDropboxTokenInfo($newAccessToken);
         } catch (Exception $e) {
-            $errorMessage = "Error getting refreshed token. Error " . $e->getMessage();
-            $this->logger->logError ('getAndSaveRefreshedAccessToken', $errorMessage);
-            throw new Exception($errorMessage);
+            $errorMessage = "Error getting refreshed token. Check the logs for more details.";
+            $this->logger->logError ('getAndSaveRefreshedAccessToken', "Error getting refreshed token: " . $e->getMessage());
+            
+            // It could retry getting the refresh token
+            throw new SBackupException($errorMessage, true);
         }
     }
 
@@ -183,11 +206,11 @@ class SBackupDropbox implements UploaderInterface {
         $authUrl = $this->authHelper->getAuthUrl(null, $params, $urlState, $tokenAccessType);
 
         ?>
-            <div style="padding: 20px;"><a href="<?php echo $authUrl; ?>" target="_blank">Get Dropbox auth code</a></div>
+            <div style="padding: 20px;"><a href="<?php echo $authUrl; ?>" target="_blank">Get Dropbox Access Code</a></div>
 
             <form name="dropbox-auth" action="" method="POST">
                 <div>
-                    <span>Dropbox Auth Code: </span>
+                    <span>Dropbox Access Code: </span>
                     <input type="text" name="dropboxcode" required style="width: 200px;">
                     <button type="submit">Confirm</button>
                 </div>
@@ -217,7 +240,7 @@ class SBackupDropbox implements UploaderInterface {
                     $this->logger->logError ('processReturningCode', "Error revoking Access Token: " . $e->getMessage());
                     ?>
                     <div style="color: red; border: 1px solid red;">
-                        <b>Access token was erased but there was an error when revoking the access token.</b><br><b>Error:</b> <?php echo $e->getMessage(); ?>
+                        <b>Access token was erased but there was an error when revoking the access token in Dropbox. Check the logs for more details.</b>
                     </div>
                     <?php
                 }
@@ -240,7 +263,7 @@ class SBackupDropbox implements UploaderInterface {
                 $this->logger->logError ('processReturningCode', "Error getting new Access Token from dropbox code: " . $e->getMessage());
                 ?>
                 <div style="color: red; border: 1px solid red;">
-                    <b>Error when getting the access token.</b><br><b>Error:</b> <?php echo $e->getMessage(); ?>
+                    <b>Error when getting the access token.</b> Check the logs for more details.
                 </div>
                 <?php
             }
@@ -260,7 +283,7 @@ class SBackupDropbox implements UploaderInterface {
         $this->dataStore->set(self::INFORMATION_INDEX, $tokenInfo);
         $this->tokenInfo = $tokenInfo;
 
-        $this->logger->logInfo ('saveDropboxTokenInfo', "Saved new Access Token", ["expirationTime" => $this->tokenInfo->getExpirationTime()]);
+        $this->logger->logInfo ('saveDropboxTokenInfo', "New Access Token Successfully saved", ["expirationTime" => $this->tokenInfo->getExpirationTime()]);
     }
 
     /**
@@ -280,22 +303,38 @@ class SBackupDropbox implements UploaderInterface {
     public function isAuthorized() {
         return !empty($this->tokenInfo);
     }
-    
-    public function upload( string $filesrc, string $folderId, string $filename ) {
+
+    /**
+     * Validate if Dropbox is connected and if the token is expired
+     * When token is expired, it will refresh it with a new one
+     */
+    private function validateAuthorization () {
         if (!$this->isAuthorized()) {
-            throw new Exception( "You need to Authorize SBackup to Dropbox first" );
+            throw new SBackupException( "You need to Authorize SBackup to Dropbox first" );
         }
         if ($this->tokenInfo->isTokenExpired()) {
-            $this->initDropbox();
+            $this->initDropbox(true);
+        }
+    }
+    
+    public function upload( string $filesrc, string $folderId, string $filename ) {
+        $this->validateAuthorization ();
+        
+        $dropboxFile = null;
+        try {
+            $mode = DropboxFile::MODE_READ;
+            $dropboxFile = DropboxFile::createByPath($filesrc, $mode);
+        } catch (Exception $e) {
+            throw new SBackupException($e->getMessage());
         }
 
-        $mode = DropboxFile::MODE_READ;
-        $dropboxFile = DropboxFile::createByPath($filesrc, $mode);
-
-        $file = $this->dropbox->upload($dropboxFile, $folderId.$filename, ['autorename' => true]);
-
-        // Uploaded File
-        return $file->getName();
+        try {
+            $file = $this->dropbox->upload($dropboxFile, $folderId.$filename, ['autorename' => true]);
+            return $file->getName();
+        } catch (Exception $e) {
+            // In this case, SBackup could try again the upload
+            throw new SBackupException($e->getMessage(), true);
+        }
     }
 }
 

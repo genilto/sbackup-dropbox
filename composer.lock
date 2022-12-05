@@ -81,12 +81,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/genilto/sbackup.git",
-                "reference": "0c73b5b15964b94ec3e9d253bd7067e10235c9a1"
+                "reference": "be72268884eb9e24a72633c072b277a647a90d8b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/genilto/sbackup/zipball/0c73b5b15964b94ec3e9d253bd7067e10235c9a1",
-                "reference": "0c73b5b15964b94ec3e9d253bd7067e10235c9a1",
+                "url": "https://api.github.com/repos/genilto/sbackup/zipball/be72268884eb9e24a72633c072b277a647a90d8b",
+                "reference": "be72268884eb9e24a72633c072b277a647a90d8b",
                 "shasum": ""
             },
             "require": {
@@ -120,7 +120,7 @@
                 "issues": "https://github.com/genilto/sbackup/issues",
                 "source": "https://github.com/genilto/sbackup/tree/1.0.0"
             },
-            "time": "2022-12-04T19:18:22+00:00"
+            "time": "2022-12-05T02:10:09+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",

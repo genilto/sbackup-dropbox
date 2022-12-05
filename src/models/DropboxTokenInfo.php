@@ -8,28 +8,28 @@ class DropboxTokenInfo
     /**
      * Access Token
      *
-     * @var AccessToken
+     * @var AccessToken $accessToken
      */
     protected $accessToken;
 
     /**
      * Time when created
      *
-     * @var int
+     * @var int $creationTime
      */
     protected $creationTime;
 
     /**
-     * Team ID
+     * Time when the token will expire
      *
-     * @var int
+     * @var int $expirationTime
      */
     protected $expirationTime;
 
     /**
      * Create a new AccessToken instance
      *
-     * @param array $data
+     * @param AccessToken $accessToken
      */
     public function __construct(AccessToken $accessToken)
     {
