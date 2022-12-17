@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "88ee371a9d7f5ba7d3818acd07cab863",
+    "content-hash": "5d7d9fc87cd2a0d56233e65c64b1b69f",
     "packages": [
         {
             "name": "analog/analog",
@@ -77,16 +77,16 @@
         },
         {
             "name": "genilto/sbackup",
-            "version": "1.0.0",
+            "version": "2.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/genilto/sbackup.git",
-                "reference": "be72268884eb9e24a72633c072b277a647a90d8b"
+                "reference": "c99bfd1f08119c3034e02a4c717438e88f9c97c8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/genilto/sbackup/zipball/be72268884eb9e24a72633c072b277a647a90d8b",
-                "reference": "be72268884eb9e24a72633c072b277a647a90d8b",
+                "url": "https://api.github.com/repos/genilto/sbackup/zipball/c99bfd1f08119c3034e02a4c717438e88f9c97c8",
+                "reference": "c99bfd1f08119c3034e02a4c717438e88f9c97c8",
                 "shasum": ""
             },
             "require": {
@@ -118,9 +118,9 @@
             ],
             "support": {
                 "issues": "https://github.com/genilto/sbackup/issues",
-                "source": "https://github.com/genilto/sbackup/tree/1.0.0"
+                "source": "https://github.com/genilto/sbackup/tree/2.0.0"
             },
-            "time": "2022-12-05T02:10:09+00:00"
+            "time": "2022-12-17T21:48:42+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",
@@ -455,7 +455,7 @@
         },
         {
             "name": "illuminate/collections",
-            "version": "v8.83.26",
+            "version": "v8.83.27",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/collections.git",
@@ -509,7 +509,7 @@
         },
         {
             "name": "illuminate/contracts",
-            "version": "v8.83.26",
+            "version": "v8.83.27",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/contracts.git",
@@ -557,7 +557,7 @@
         },
         {
             "name": "illuminate/macroable",
-            "version": "v8.83.26",
+            "version": "v8.83.27",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/macroable.git",

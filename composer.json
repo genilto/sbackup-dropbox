@@ -29,6 +29,6 @@
     "require": {
         "kunalvarma05/dropbox-php-sdk": "^0.4.1",
         "analog/analog": "^1.0",
-        "genilto/sbackup": "^1.0"
+        "genilto/sbackup": "^2.0"
     }
 }

@@ -7,6 +7,7 @@ use \genilto\sbackup\UploaderInterface;
 use \genilto\sbackup\store\DataStoreInterface;
 use \genilto\sbackup\logger\SBLogger;
 use \genilto\sbackup\SBackupException;
+use \genilto\sbackup\models\SBackupFileMetadata;
 
 use \genilto\sbackup\adapters\models\DropboxTokenInfo;
 
@@ -329,8 +330,26 @@ class SBackupDropbox implements UploaderInterface {
         }
 
         try {
+            /**
+             * @var \Kunnu\Dropbox\Models\FileMetadata $file
+             */
             $file = $this->dropbox->upload($dropboxFile, $folderId.$filename, ['autorename' => true]);
-            return $file->getName();
+
+            // Verifies if the response is correct
+            if (!empty($file) && !empty($file->getId())) {
+                return new SBackupFileMetadata(
+                    $file->getId(),
+                    $file->getName(),
+                    $file->getSize(),
+                    $file->getPathDisplay()
+                );
+            }
+
+            // When the response is empty try again
+            throw new SBackupException("Dropbox response was empty. Unknown error.", true);
+
+        } catch (SBackupException $e) {
+            throw $e;
         } catch (Exception $e) {
             // In this case, SBackup could try again the upload
             throw new SBackupException($e->getMessage(), true);
