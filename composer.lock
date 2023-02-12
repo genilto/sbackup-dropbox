@@ -77,16 +77,16 @@
         },
         {
             "name": "genilto/sbackup",
-            "version": "2.0.0",
+            "version": "2.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/genilto/sbackup.git",
-                "reference": "c99bfd1f08119c3034e02a4c717438e88f9c97c8"
+                "reference": "15cc05e8942210c1d85b0f8645c2b8e2f4ff9e94"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/genilto/sbackup/zipball/c99bfd1f08119c3034e02a4c717438e88f9c97c8",
-                "reference": "c99bfd1f08119c3034e02a4c717438e88f9c97c8",
+                "url": "https://api.github.com/repos/genilto/sbackup/zipball/15cc05e8942210c1d85b0f8645c2b8e2f4ff9e94",
+                "reference": "15cc05e8942210c1d85b0f8645c2b8e2f4ff9e94",
                 "shasum": ""
             },
             "require": {
@@ -118,9 +118,9 @@
             ],
             "support": {
                 "issues": "https://github.com/genilto/sbackup/issues",
-                "source": "https://github.com/genilto/sbackup/tree/2.0.0"
+                "source": "https://github.com/genilto/sbackup/tree/2.0.1"
             },
-            "time": "2022-12-17T21:48:42+00:00"
+            "time": "2022-12-18T19:16:12+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",

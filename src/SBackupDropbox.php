@@ -31,21 +31,6 @@ class SBackupDropbox implements UploaderInterface {
     private $clientSecret;
 
     /**
-     * @var ?DropboxTokenInfo $tokenInfo
-     */
-    private $tokenInfo;
-
-    /**
-     * @var Dropbox $dropbox;
-     */
-    private $dropbox;
-
-    /**
-     * @var DropboxAuthHelper $authHelper;
-     */
-    private $authHelper;
-    
-    /**
      * Logging adapter
      * 
      * @var SBLogger $logger
@@ -73,27 +58,27 @@ class SBackupDropbox implements UploaderInterface {
 
         $this->clientId = $clientId;
         $this->clientSecret = $clientSecret;
-        $this->tokenInfo = $this->getDropboxTokenInfo ();
-
-        $this->initDropbox();
     }
 
     /**
      * Init the dropbox variables
      * 
      * @param bool Indicate if must get a refreshed token when current token is expired
+     * 
+     * @return Dropbox
      */
     private function initDropbox ($tokenMustBeValid = false) {
         $accessToken = $this->getToken($tokenMustBeValid);
         
+        if ($tokenMustBeValid && empty($accessToken)) {
+            throw new SBackupException( "You need to Authorize SBackup to Dropbox first" );
+        }
+
         // Configure Dropbox Application
         $dropboxApp = new DropboxApp($this->clientId, $this->clientSecret, $accessToken);
 
         // Configure Dropbox service
-        $this->dropbox = new Dropbox($dropboxApp);
-
-        // DropboxAuthHelper
-        $this->authHelper = $this->dropbox->getAuthHelper();
+        return new Dropbox($dropboxApp);
     }
 
     /**
@@ -104,23 +89,24 @@ class SBackupDropbox implements UploaderInterface {
      * @return string token if exists and is valid or a refreshed token if expired
      */
     private function getToken($mustBeValid) {
-        if (!$this->isAuthorized()) {
+        $tokenInfo = $this->getDropboxTokenInfo ();
+        if (empty($tokenInfo)) {
             return null;
         }
-        if ($mustBeValid && $this->tokenInfo->isTokenExpired()) {
-            $this->getAndSaveRefreshedAccessToken();
+        if ($mustBeValid && $tokenInfo->isTokenExpired()) {
+            $this->getAndSaveRefreshedAccessToken($tokenInfo);
         }
-        return $this->tokenInfo->getAccessToken()->getToken();
+        return $tokenInfo->getAccessToken()->getToken();
     }
 
     /**
      * Get new Access Token by using the refresh token
      */
-    private function getAndSaveRefreshedAccessToken() {
+    private function getAndSaveRefreshedAccessToken($tokenInfo) {
 
         $this->logger->logInfo ('getAndSaveRefreshedAccessToken', "Getting refreshed access token");
 
-        $accessToken = $this->tokenInfo->getAccessToken();
+        $accessToken = $tokenInfo->getAccessToken();
 
         // Configure Dropbox Application
         $dropboxApp = new DropboxApp($this->clientId, $this->clientSecret, $accessToken->getToken());
@@ -160,33 +146,34 @@ class SBackupDropbox implements UploaderInterface {
         
         // Process the code sent by the form
         $this->processReturningCode();
+        $tokenInfo = $this->getDropboxTokenInfo ();
 
-        if ($this->isAuthorized()) {
-            ?>
-            
-            <div style="padding: 20px; color: #008000;">
-                SBackup is Authorized to Dropbox!<br><br>
-                Token created in: <b><?php $this->printDate($this->tokenInfo->getCreationTime());  ?></b><br>
-                Expiration date is: <b><?php $this->printDate($this->tokenInfo->getExpirationTime());  ?></b><br><br>
-                Token is: <?php
-                    if ($this->tokenInfo->isTokenExpired()) {
-                        echo '<b color="red">Expired!</b>';
-                    } else {
-                        echo '<b>Valid!</b>';
-                    }
-                ?>
-            </div>
-            <div style="padding: 20px;">
-                <form name="dropbox-auth" action="" method="POST">
-                    <input type="hidden" name="cleandropboxauth" value="YES">
-                    <button type="submit">Unauthorize</button>
-                </form>
-            </div>
-            
-            <?php
-        } else  {
+        if (empty($tokenInfo)) {
             $this->displayAuthForm ();
+            return;
         }
+        ?>
+        
+        <div style="padding: 20px; color: #008000;">
+            SBackup is Authorized to Dropbox!<br><br>
+            Token created in: <b><?php $this->printDate($tokenInfo->getCreationTime());  ?></b><br>
+            Expiration date is: <b><?php $this->printDate($tokenInfo->getExpirationTime());  ?></b><br><br>
+            Token is: <?php
+                if ($tokenInfo->isTokenExpired()) {
+                    echo '<b color="red">Expired!</b>';
+                } else {
+                    echo '<b>Valid!</b>';
+                }
+            ?>
+        </div>
+        <div style="padding: 20px;">
+            <form name="dropbox-auth" action="" method="POST">
+                <input type="hidden" name="cleandropboxauth" value="YES">
+                <button type="submit">Unauthorize</button>
+            </form>
+        </div>
+            
+        <?php
     }
 
     /**
@@ -204,7 +191,8 @@ class SBackupDropbox implements UploaderInterface {
         $tokenAccessType = "offline";
 
         // Fetch the Authorization/Login URL
-        $authUrl = $this->authHelper->getAuthUrl(null, $params, $urlState, $tokenAccessType);
+        $dropbox = $this->initDropbox();
+        $authUrl = $dropbox->getAuthHelper()->getAuthUrl(null, $params, $urlState, $tokenAccessType);
 
         ?>
             <div style="padding: 20px;"><a href="<?php echo $authUrl; ?>" target="_blank">Get Dropbox Access Code</a></div>
@@ -228,15 +216,20 @@ class SBackupDropbox implements UploaderInterface {
      * Verify and process the returning code from dropbox
      */
     private function processReturningCode () {
-        if ($this->isAuthorized()) {
-            if (isset($_POST['cleandropboxauth']) && $_POST['cleandropboxauth'] == "YES") {
-                
-                $this->logger->logInfo ('processReturningCode', "Revoking Access Token...");
+        if (isset($_POST['cleandropboxauth']) && $_POST['cleandropboxauth'] == "YES") {
+            $this->dataStore->clear(self::INFORMATION_INDEX);
 
-                $this->dataStore->clear(self::INFORMATION_INDEX);
-                $this->tokenInfo = null;
+            $tokenInfo = $this->getDropboxTokenInfo ();
+            if (!empty($tokenInfo)) {
+            
+                $this->logger->logInfo ('processReturningCode', "Revoking Access Token...");
+                
+                if ($tokenInfo->isTokenExpired()) {
+                    $this->logger->logError ('processReturningCode', "No need revoking Access token. Already expired.");
+                }
+                $dropbox = $this->initDropbox();
                 try {
-                    $this->authHelper->revokeAccessToken();
+                    $dropbox->getAuthHelper()->revokeAccessToken();
                 } catch (Exception $e) {
                     $this->logger->logError ('processReturningCode', "Error revoking Access Token: " . $e->getMessage());
                     ?>
@@ -255,10 +248,12 @@ class SBackupDropbox implements UploaderInterface {
                 $this->logger->logError ('processReturningCode', "Dropbox code not informed!");
                 return;
             }
+            
+            $dropbox = $this->initDropbox();
 
             // Fetch the AccessToken
             try {
-                $accessToken = $this->authHelper->getAccessToken($dropboxCode);
+                $accessToken = $dropbox->getAuthHelper()->getAccessToken($dropboxCode);
                 $this->saveDropboxTokenInfo($accessToken);
             } catch (Exception $e) {
                 $this->logger->logError ('processReturningCode', "Error getting new Access Token from dropbox code: " . $e->getMessage());
@@ -282,9 +277,8 @@ class SBackupDropbox implements UploaderInterface {
 
         // Store the token
         $this->dataStore->set(self::INFORMATION_INDEX, $tokenInfo);
-        $this->tokenInfo = $tokenInfo;
 
-        $this->logger->logInfo ('saveDropboxTokenInfo', "New Access Token Successfully saved", ["expirationTime" => $this->tokenInfo->getExpirationTime()]);
+        $this->logger->logInfo ('saveDropboxTokenInfo', "New Access Token Successfully saved", ["expirationTime" => $tokenInfo->getExpirationTime()]);
     }
 
     /**
@@ -302,24 +296,25 @@ class SBackupDropbox implements UploaderInterface {
      * @return boolean
      */
     public function isAuthorized() {
-        return !empty($this->tokenInfo);
+        return !empty($this->getDropboxTokenInfo ());
     }
 
     /**
      * Validate if Dropbox is connected and if the token is expired
      * When token is expired, it will refresh it with a new one
+     * 
+     * @return Dropbox
      */
-    private function validateAuthorization () {
-        if (!$this->isAuthorized()) {
-            throw new SBackupException( "You need to Authorize SBackup to Dropbox first" );
-        }
-        if ($this->tokenInfo->isTokenExpired()) {
-            $this->initDropbox(true);
-        }
-    }
+    // private function validateAuthorization () {
+    //     $tokenInfo = $this->getDropboxTokenInfo ();
+    //     if (empty($tokenInfo)) {
+    //         throw new SBackupException( "You need to Authorize SBackup to Dropbox first" );
+    //     }
+    //     return $this->initDropbox(true);
+    // }
     
     public function upload( string $filesrc, string $folderId, string $filename ) {
-        $this->validateAuthorization ();
+        $dropbox = $this->initDropbox(true);
         
         $dropboxFile = null;
         try {
@@ -333,7 +328,7 @@ class SBackupDropbox implements UploaderInterface {
             /**
              * @var \Kunnu\Dropbox\Models\FileMetadata $file
              */
-            $file = $this->dropbox->upload($dropboxFile, $folderId.$filename, ['autorename' => true]);
+            $file = $dropbox->upload($dropboxFile, $folderId.$filename, ['autorename' => true]);
 
             // Verifies if the response is correct
             if (!empty($file) && !empty($file->getId())) {
