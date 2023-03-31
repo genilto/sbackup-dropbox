@@ -16,11 +16,6 @@
             "email": "genilto.vanzin@gmail.com"
         }
     ],
-    "config": {
-        "platform": {
-          "php": "7.3.3"
-        }
-    },
     "autoload": {
         "psr-4": {
             "genilto\\sbackup\\adapters\\": "src/"
