@@ -13,7 +13,6 @@ use \genilto\sbackup\adapters\models\DropboxTokenInfo;
 
 use \Kunnu\Dropbox\Dropbox;
 use \Kunnu\Dropbox\DropboxApp;
-use \Kunnu\Dropbox\Authentication\DropboxAuthHelper;
 use \Kunnu\Dropbox\DropboxFile;
 use \Kunnu\Dropbox\Models\AccessToken;
 
@@ -94,13 +93,15 @@ class SBackupDropbox implements UploaderInterface {
             return null;
         }
         if ($mustBeValid && $tokenInfo->isTokenExpired()) {
-            $this->getAndSaveRefreshedAccessToken($tokenInfo);
+            $tokenInfo = $this->getAndSaveRefreshedAccessToken($tokenInfo);
         }
         return $tokenInfo->getAccessToken()->getToken();
     }
 
     /**
      * Get new Access Token by using the refresh token
+     * 
+     * @return DropboxTokenInfo
      */
     private function getAndSaveRefreshedAccessToken($tokenInfo) {
 
@@ -120,7 +121,7 @@ class SBackupDropbox implements UploaderInterface {
         try {
             // Refreshing access token
             $newAccessToken = $authHelper->getRefreshedAccessToken($accessToken);
-            $this->saveDropboxTokenInfo($newAccessToken);
+            return $this->saveDropboxTokenInfo($newAccessToken);
         } catch (Exception $e) {
             $errorMessage = "Error getting refreshed token. Check the logs for more details.";
             $this->logger->logError ('getAndSaveRefreshedAccessToken', "Error getting refreshed token: " . $e->getMessage());
@@ -270,6 +271,8 @@ class SBackupDropbox implements UploaderInterface {
      * Save the access token 
      * 
      * @param AccessToken $accessToken
+     * 
+     * @return DropboxTokenInfo
      */
     private function saveDropboxTokenInfo(AccessToken $accessToken) {
         // Create the Token Infor Instance
@@ -277,8 +280,9 @@ class SBackupDropbox implements UploaderInterface {
 
         // Store the token
         $this->dataStore->set(self::INFORMATION_INDEX, $tokenInfo);
-
         $this->logger->logInfo ('saveDropboxTokenInfo', "New Access Token Successfully saved", ["expirationTime" => $tokenInfo->getExpirationTime()]);
+
+        return $tokenInfo;
     }
 
     /**
